@@ -20,9 +20,11 @@ using namespace std;
 const GLfloat SCREENWIDTH = 700; //window size
 const GLfloat SCREENHEIGHT = 700;
 
-GLfloat curr_z = 1.0; // Núverandi z-hnit
+GLfloat curr_z = 1.0; // NÃºverandi z-hnit
 GLfloat theta = 40.0;
 GLfloat fovy = 100.0;
+
+bool is_animated = true;
 
 mat4 I(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 
@@ -86,24 +88,32 @@ public:
 float x = 0.5;
 
 // Vertices of a unit cube centered at origin, sides aligned with axes
-vec3 vertices[8] = { vec3(-x, -x, x), vec3(-x, x, x), vec3(x, x, x), vec3(x, -x, x), vec3(-x, -x, -x), vec3(-x, x, -x), vec3(x, x, -x), vec3(x, -x, -x) };
+vec3 vertices[8] = { vec3(-x, -x, x), vec3(-x, x, x), vec3(x, x, x), vec3(x, -x,
+		x), vec3(-x, -x, -x), vec3(-x, x, -x), vec3(x, x, -x), vec3(x, -x, -x) };
 
-// RGBA olors
+// RGBA colors
 vec4 vertex_colors[8] = { vec4(0.0, 0.0, 0.0, 1.0), // black
-		vec4(1.0, 0.0, 0.0, 1.0), // red
-		vec4(1.0, 1.0, 0.0, 1.0), // yellow
-		vec4(0.0, 1.0, 0.0, 1.0), // green
-		vec4(0.0, 0.0, 1.0, 1.0), // blue
-		vec4(1.0, 0.0, 1.0, 1.0), // magenta
-		vec4(1.0, 1.0, 1.0, 1.0), // white
-		vec4(0.0, 1.0, 1.0, 1.0) // cyan
+vec4(1.0, 0.0, 0.0, 1.0), // red
+vec4(1.0, 1.0, 0.0, 1.0), // yellow
+vec4(0.0, 1.0, 0.0, 1.0), // green
+vec4(0.0, 0.0, 1.0, 1.0), // blue
+vec4(1.0, 0.0, 1.0, 1.0), // magenta
+vec4(1.0, 1.0, 1.0, 1.0), // white
+vec4(0.0, 1.0, 1.0, 1.0) // cyan
 		};
 
 class Cube: public Model {
 public:
 
+	int up_color = 1;     // white
+	int front_color = 3;  //red
+
 	Cube(World* world, vec4 loc);
 	void quad(int a, int b, int c, int d);
+	int get_back_color();
+	int get_down_color();
+	int get_left_color();
+	int get_right_color();
 };
 
 //--------------------------------- Rubik's cube class ------------------------------
@@ -114,6 +124,10 @@ public:
 	Rubik(World* world);
 	virtual void draw();
 	void update();
+	bool is_solved();
+	void animation(int axis, int order, bool is_clockwise);
+	void update_color(int axis, int order, bool is_clockwise);
+	void print();
 };
 
 void Model::update() {
@@ -239,9 +253,14 @@ void Model::rotate(float theta, int d) {
 	default:
 		break;
 	}
+
+	double val = (int) rotation_angle % 90;
+	if (val == 0)
+		is_animated = false;
+	else
+		is_animated = true;
 }
 //----------------------------Cube Implementation---------------------------------------
-
 
 void Cube::quad(int a, int b, int c, int d) {
 	world->addPoint(vertices[a], vertex_colors[a], world->models.size());
@@ -252,22 +271,13 @@ void Cube::quad(int a, int b, int c, int d) {
 	world->addPoint(vertices[d], vertex_colors[a], world->models.size());
 }
 
-void pm(mat4 m) {
-	for (int i = 0; i < 4; i++) {
-		for (int j = 0; j < 4; j++) {
-			cout << " " << m[i][j];
-		}
-		cout << endl;
-	}
 
-	cout << "==============================" << endl;
-}
 
 Cube::Cube(World* world, vec4 loc) :
-	Model(world) {
+		Model(world) {
 
 	this->position = loc;
-	mat4 m1(//
+	mat4 m1(  //
 			1, 0, 0, loc.x, 0, 1, 0, loc.y, 0, 0, 1, loc.z, 0, 0, 0, 1);
 
 	this->translation_m = m1;
@@ -283,10 +293,33 @@ Cube::Cube(World* world, vec4 loc) :
 	quad(3, 0, 4, 7);
 }
 
+int Cube::get_down_color()
+{
+	return - up_color;
+}
+
+int Cube::get_back_color()
+{
+	return - front_color;
+}
+
+int Cube::get_left_color()
+{
+	if ((up_color>0 && front_color >0)|| (up_color>0 && front_color>0))
+		return 2;
+	else if((up_color>0 && front_color<0) || (up_color<0 && front_color>0))
+		return -2;
+}
+
+int Cube::get_right_color()
+{
+	return - get_left_color();
+}
+
 //==========================================================================
 
 Rubik::Rubik(World* world) :
-	Model(world) {
+		Model(world) {
 
 	memset(cubes, 0, sizeof cubes);
 	int delta[3] = { -1, 0, 1 };
@@ -297,8 +330,12 @@ Rubik::Rubik(World* world) :
 		for (int j = 0; j < 3; j++) {
 			for (int k = 0; k < 3; k++) {
 
-				Cube* c = new Cube(world, vec4(delta[i] * (CUBE_SIDE + GAP), delta[j] * (CUBE_SIDE + GAP), delta[k] * (CUBE_SIDE + GAP), 0));
-				printf("New Cube Centered @(%2.2f, %2.2f, %2.2f)\n", c->position.x, c->position.y, c->position.z);
+				Cube* c = new Cube(world,
+						vec4(delta[i] * (CUBE_SIDE + GAP),
+								delta[j] * (CUBE_SIDE + GAP),
+								delta[k] * (CUBE_SIDE + GAP), 0));
+				printf("New Cube Centered @(%2.2f, %2.2f, %2.2f)\n",
+						c->position.x, c->position.y, c->position.z);
 				world->addModel(c);
 				cubes[i][j][k] = c;
 
@@ -306,13 +343,6 @@ Rubik::Rubik(World* world) :
 		}
 	}
 
-	/*
-	 *
-	 *
-	 if(k==2){
-	 c->rotate(90, 2);
-	 }
-	 */
 }
 
 void Rubik::draw() {
@@ -320,17 +350,132 @@ void Rubik::draw() {
 }
 
 //clock_t last_time =0;
+/* if solved --> return
+ * else if animation don't do any thing
+ * change color faces in each of them
+ * else rearrange cubes in the matrix
+ * check solved if all has same 2 faces case
+ */
+
+int w= 0;
+void Rubik::print()
+{
+	for(int i=0;i<3;i++)
+		for(int j=0;j<3;j++)
+		{
+			for(int k=0;k<3;k++)
+			{
+				cout << cubes[i][j][k]->up_color << "   ";
+			}
+			cout << endl;
+		}
+	cout << "=====================================" << endl;
+}
+
 void Rubik::update() {
 	Model::update();
 
-	int i, j, k=0;
+//	if (is_solved())
+//		return;
+	if (w==0)
+	   print();
 
-	for (i = 0; i < 3; i++)
-		for ( j = 0; j < 3; j++)
-			//for (int k = 0; k < 3; k++)
-			{
-				cubes[i][j][k]->rotate(1, 2);
+	if(w == 1)
+	{
+		print();
+		return;
+	}
+
+	int axis = 2, order = 1;
+	if (is_animated)
+		animation(axis, order, true);
+	else {
+		update_color(axis, order, true);
+		//change positon int matrix
+		is_animated = true;
+		w++;
+	}
+
+}
+
+void Rubik::update_color(int axis, int order, bool is_clockwise) {
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 3; j++)
+			for (int k = 0; k < 3; k++) {
+				switch (axis) {
+				case 0:
+					i = 3;
+					if (is_clockwise) {
+						int down =  cubes[order][j][k]->get_down_color();
+						 cubes[order][j][k]->up_color =  cubes[order][j][k]->front_color;
+						 cubes[order][j][k]->front_color = down;
+					} else {
+						int back =  cubes[order][j][k]->get_back_color();
+						 cubes[order][j][k]->front_color =  cubes[order][j][k]->up_color;
+						 cubes[order][j][k]->up_color = back;
+					}
+					break;
+				case 1:
+					j = 3;
+					if (is_clockwise) {
+						cubes[i][order][k]->front_color = cubes[i][order][k]->get_right_color();
+					} else {
+						cubes[i][order][k]->front_color = cubes[i][order][k]->get_left_color();
+					}
+					break;
+				case 2:
+					k = 3;
+					if (is_clockwise) {
+						cubes[i][j][order]->up_color = cubes[i][j][order]->get_left_color();
+					} else {
+						cubes[i][j][order]->up_color = cubes[i][j][order]->get_right_color();
+					}
+					break;
+				default:
+					break;
+				}
 			}
 }
 
+void Rubik::animation(int axis, int order, bool is_clockwise) {
+	int theta;
+	if (is_clockwise)
+		theta = -1;
+	else
+		theta = 1;
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 3; j++)
+			for (int k = 0; k < 3; k++) {
+				switch (axis) {
+				case 0:
+					i = 3;
+					cubes[order][j][k]->rotate(theta, axis);
+					break;
+				case 1:
+					j = 3;
+					cubes[i][order][k]->rotate(theta, axis);
+					break;
+				case 2:
+					k = 3;
+					cubes[i][j][order]->rotate(theta, axis);
+					break;
+				default:
+					break;
+				}
+			}
+}
+
+bool Rubik::is_solved() {
+	int current_up_color = cubes[0][0][0]->up_color;
+	int current_front_color = cubes[0][0][0]->front_color;
+
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 3; ++j)
+			for (int k = 0; k < 3; k++)
+				if (current_up_color != cubes[i][j][k]->up_color
+						|| current_front_color != cubes[i][j][k]->front_color)
+					return false;
+	return true;
+
+}
 #endif /* MODEL_H_ */
