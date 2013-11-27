@@ -398,6 +398,15 @@ void Rubik::update() {
 
 }
 
+/*
+*1 : up -> white	-1 : down : Green
+*2 : left -> Pink	-2 : Right : Yellow
+*3  :front -> red	-3 : Back : Blue
+*Update ( clockwise direction ) : 
+*	Around X : up -> back -> down -> front -> up 
+*	Around Y : front -> left -> Back -> Right -> Front
+*	Around Z : up -> Left -> down -> Right -> Up 
+*/
 void Rubik::update_color(int axis, int order, bool is_clockwise) {
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 3; j++)
