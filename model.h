@@ -128,6 +128,7 @@ public:
 	void animation(int axis, int order, bool is_clockwise);
 	void update_color(int axis, int order, bool is_clockwise);
 	void print();
+	void init(int numofRotation);
 };
 
 void Model::update() {
@@ -271,8 +272,6 @@ void Cube::quad(int a, int b, int c, int d) {
 	world->addPoint(vertices[d], vertex_colors[a], world->models.size());
 }
 
-
-
 Cube::Cube(World* world, vec4 loc) :
 		Model(world) {
 
@@ -343,6 +342,32 @@ Rubik::Rubik(World* world) :
 		}
 	}
 
+	init(3);
+
+}
+
+void Rubik::init(int numofRoatation)
+{
+	for(int i=0;i<numofRoatation;i++)
+	{
+		int axis = rand() % 3;
+		int order =(rand()+rand())%3;
+		int direction =rand()%2;
+		for(int j=0;j<90;j++)
+		{
+			//for debug
+			cout << "axis : " <<axis<< endl;
+			cout << "order : " <<order<< endl;
+			cout << "direction :  " << (bool)direction << endl;
+			
+			
+			animation(axis,order,(bool)direction);
+			update_color(axis,order,direction);
+			//handel matrix positions
+			cout << "---------" << endl;
+		}
+		cout << "-----------------------------------------" << endl;
+	}
 }
 
 void Rubik::draw() {
@@ -365,7 +390,7 @@ void Rubik::print()
 		{
 			for(int k=0;k<3;k++)
 			{
-				cout << cubes[i][j][k]->up_color << "   ";
+				cout << cubes[i][j][k]->front_color << "   ";
 			}
 			cout << endl;
 		}
@@ -377,36 +402,29 @@ void Rubik::update() {
 
 //	if (is_solved())
 //		return;
-	if (w==0)
-	   print();
+//	if (w==0)
+//	   print();
+//
+//	if(w == 1)
+//	{
+//		print();
+//		return;
+//	}
 
-	if(w == 1)
-	{
-		print();
-		return;
-	}
-
-	int axis = 2, order = 1;
-	if (is_animated)
-		animation(axis, order, true);
-	else {
-		update_color(axis, order, true);
-		//change positon int matrix
-		is_animated = true;
-		w++;
-	}
+//	int axis = 1, order = 1;
+//	if (is_animated)
+//		animation(axis, order, true);
+//	else
+//	{
+//		update_color(axis, order, true);
+//		//change positon int matrix
+//		//is_animated = true;
+//
+//		w++;
+//	}
 
 }
 
-/*
-*1 : up -> white	-1 : down : Green
-*2 : left -> Pink	-2 : Right : Yellow
-*3  :front -> red	-3 : Back : Blue
-*Update ( clockwise direction ) : 
-*	Around X : up -> back -> down -> front -> up 
-*	Around Y : front -> left -> Back -> Right -> Front
-*	Around Z : up -> Left -> down -> Right -> Up 
-*/
 void Rubik::update_color(int axis, int order, bool is_clockwise) {
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 3; j++)
